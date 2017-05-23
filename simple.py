@@ -2,21 +2,31 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 from pandas import DataFrame, Series
-import sys, progressbar, time, json, heapq, multiprocessing
+import sys, progressbar, time, json, heapq, multiprocessing, os
+
+devids = ['0506007','0506009','0506012','0506021','0506024','0620001','0622002','0627001','0627002','0630001','0704001','0705001','0713002','0715003','0718001','0718003','0721003','0722001','0722002','0728002','0728003','0729004','0729006']
+csvname = "co_2016-12-01_00-00-00_2017-04-13_00-00-00.csv"
 
 z = []
 timestamp = ""
-count = 0
-with open('test.csv') as infile:
-	for line in infile.readlines():
-		items = line.split(',')
-		if items[0]=='time' or not items[3] or not float(items[9]) or not float(items[10]) or not float(items[18]) or not items[5]:
-			continue
-		count += 1
-		timestamp = time.mktime(time.strptime(items[0],"%Y-%m-%dT%H:%M:%SZ"))
-		z.append([items[9],items[10],items[3],items[18],items[5],timestamp])
+for dev in devids:
+	count = 0
+	with open(os.path.join(dev,csvname)) as infile:
+		print(dev)
+		for line in infile.readlines():
+			items = line.split(',')
+			if items[0]=='id':
+				continue
+			count += 1
+			if count == 10000:
+				break
+			timestamp = time.mktime(time.strptime(items[1],"%Y-%m-%d %H:%M:%S"))
+			z.append([items[2],items[3],items[5],dev,timestamp])
+with open('data.json','w') as datafile:
+	json.dump(z, datafile)
+z = json.load(open('data.json'))
 z = np.array(z, dtype=np.float)
-z = DataFrame(z, columns=['x','y','co2','pm2d5','devid','timestamp'])
+z = DataFrame(z, columns=['x','y','pm2d5','devid','timestamp'])
 
 def getp(i):
 	return np.array([z.x[i],z.y[i]])
@@ -100,8 +110,6 @@ def gh_filter(data, index, resmap):
 
 if len(sys.argv) > 1:
 	groups = knear(float(sys.argv[1]))
-	for g in groups:
-		print(len(g))
 	with open('groups.json','w') as groupfile:
 		json.dump(groups, groupfile)
 	resmap = {}
